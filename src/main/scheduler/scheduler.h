@@ -105,6 +105,7 @@ typedef enum {
     TASK_ACCEL,
     TASK_ATTITUDE,
     TASK_RX,
+
     TASK_SERIAL,
     TASK_DISPATCH,
     TASK_BATTERY_VOLTAGE,
@@ -191,9 +192,13 @@ typedef enum {
 #ifdef USE_GIMBAL
     TASK_GIMBAL,
 #endif
+#ifdef USE_SERIALRX_MAVLINK
+    TASK_MAVLINK_RX,
+#endif
 
     /* Count of real tasks */
     TASK_COUNT,
+
 
     /* Service task IDs */
     TASK_NONE = TASK_COUNT,

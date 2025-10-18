@@ -17,6 +17,8 @@
 
 #pragma once
 
+
+#include "rx/rx.h"
 #define MAVLINK_COMM_NUM_BUFFERS 1
 
 #pragma GCC diagnostic push
@@ -26,6 +28,8 @@
 
 void mavlinkRxHandleMessage(const mavlink_rc_channels_override_t *msg);
 bool mavlinkRxInit(const rxConfig_t *initialRxConfig, rxRuntimeState_t *rxRuntimeState);
+void mavlinkRxUpdate(timeUs_t currentTimeUs);
+// TODO: shouldSendMavlinkTelemetry -> true
 #if defined(USE_SERIALRX_MAVLINK)
 bool isValidMavlinkTxBuffer (void);
 bool shouldSendMavlinkTelemetry(void);

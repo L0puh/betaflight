@@ -67,6 +67,7 @@
 static serialPortUsage_t serialPortUsageList[SERIAL_PORT_COUNT];
 
 const serialPortIdentifier_e serialPortIdentifiers[SERIAL_PORT_COUNT] = {
+
 #ifdef USE_VCP
     SERIAL_PORT_USB_VCP,
 #endif

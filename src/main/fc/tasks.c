@@ -86,6 +86,9 @@
 
 #include "rx/rx.h"
 #include "rx/rc_stats.h"
+#ifdef USE_SERIALRX_MAVLINK
+#include "rx/mavlink.h"
+#endif
 
 #include "scheduler/scheduler.h"
 
@@ -369,6 +372,7 @@ task_attribute_t task_attributes[TASK_COUNT] = {
     [TASK_STACK_CHECK] = DEFINE_TASK("STACKCHECK", NULL, NULL, taskStackCheck, TASK_PERIOD_HZ(10), TASK_PRIORITY_LOWEST),
 #endif
 
+
     [TASK_GYRO] = DEFINE_TASK("GYRO", NULL, NULL, taskGyroSample, TASK_GYROPID_DESIRED_PERIOD, TASK_PRIORITY_REALTIME),
     [TASK_FILTER] = DEFINE_TASK("FILTER", NULL, NULL, taskFiltering, TASK_GYROPID_DESIRED_PERIOD, TASK_PRIORITY_REALTIME),
     [TASK_PID] = DEFINE_TASK("PID", NULL, NULL, taskMainPidLoop, TASK_GYROPID_DESIRED_PERIOD, TASK_PRIORITY_REALTIME),
@@ -416,7 +420,9 @@ task_attribute_t task_attributes[TASK_COUNT] = {
 #ifdef USE_DASHBOARD
     [TASK_DASHBOARD] = DEFINE_TASK("DASHBOARD", NULL, NULL, dashboardUpdate, TASK_PERIOD_HZ(10), TASK_PRIORITY_LOW),
 #endif
-
+#ifdef USE_SERIALRX_MAVLINK
+    [TASK_MAVLINK_RX] = DEFINE_TASK( "MAVLINK_RX", NULL, NULL, mavlinkRxUpdate, TASK_PERIOD_HZ(50), TASK_PRIORITY_LOW),
+#endif
 #ifdef USE_OSD
     [TASK_OSD] = DEFINE_TASK("OSD", NULL, osdUpdateCheck, osdUpdate, TASK_PERIOD_HZ(OSD_FRAMERATE_DEFAULT_HZ), TASK_PRIORITY_LOW),
 #endif
@@ -478,6 +484,7 @@ task_attribute_t task_attributes[TASK_COUNT] = {
 #ifdef USE_GIMBAL
     [TASK_GIMBAL] = DEFINE_TASK("GIMBAL", NULL, NULL, gimbalUpdate, TASK_PERIOD_HZ(100), TASK_PRIORITY_MEDIUM),
 #endif
+
 };
 
 task_t *getTask(unsigned taskId)
@@ -670,5 +677,10 @@ void tasksInit(void)
 
 #ifdef USE_GIMBAL
     setTaskEnabled(TASK_GIMBAL, true);
+#endif
+#ifdef USE_SERIALRX_MAVLINK
+    if (mavlinkRxInit(rxConfig(), &rxRuntimeState)) {
+        setTaskEnabled(TASK_MAVLINK_RX, true);
+    }
 #endif
 }
