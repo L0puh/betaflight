@@ -293,6 +293,8 @@ void rxInit(void)
         rxRuntimeState.rxProvider = RX_PROVIDER_MSP;
     } else if (featureIsEnabled(FEATURE_RX_SPI)) {
         rxRuntimeState.rxProvider = RX_PROVIDER_SPI;
+    } else if (featureIsEnabled(FEATURE_RX_MAVLINK)) {
+        rxRuntimeState.rxProvider = RX_PROVIDER_MAVLINK;
     } else {
         rxRuntimeState.rxProvider = RX_PROVIDER_NONE;
     }

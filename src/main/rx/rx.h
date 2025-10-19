@@ -135,6 +135,7 @@ typedef enum {
     RX_PROVIDER_MSP,
     RX_PROVIDER_SPI,
     RX_PROVIDER_UDP,
+    RX_PROVIDER_MAVLINK
 } rxProvider_t;
 
 typedef struct rxRuntimeState_s {

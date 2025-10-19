@@ -25,35 +25,69 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/time.h"      // micros(), millis()
-#include "common/utils.h"     // UNUSED macro
+#include "build/debug.h"
+#include "common/time.h"     
 #include "drivers/serial.h"
 #include "io/serial.h"
 #include "rx/rx.h"
 #include "common/mavlink.h"
 
-#include "drivers/time.h"     // millis
+#include "drivers/time.h"     
+#include "telemetry/telemetry.h"
+
+
+#ifdef USE_SERIALRX_MAVLINK
 
 #define MAVLINK_BAUDRATE 115200
 #define MAVLINK_COMM_CHANNEL MAVLINK_COMM_0
 #define MAVLINK_INACTIVE_TIMEOUT_US 200000  // 200ms
 #define MAVLINK_HEARTBEAT_INTERVAL_US 1000000  // 1 Hz
+
+
 #define MAVLINK_CHANNEL_COUNT 18
+#define MAVLINK_BAUD_RATE_INDEX BAUD_460800
+static uint16_t mavlinkChannelData[MAVLINK_CHANNEL_COUNT];
+static bool frameReceived;
 
 static uint16_t mavlinkChannelData[MAVLINK_CHANNEL_COUNT];
 static bool frameReceived = false;
 static timeUs_t lastFrameTimeUs = 0;
 
-
+static mavlink_message_t mavRecvMsg;
+static mavlink_status_t mavRecvStatus;
+static volatile uint8_t txbuff_free = 100;  // tx buffer space in %, start with empty buffer
+static volatile bool txbuff_valid = false;
 static serialPort_t *mavlinkPort = NULL;
-//static mavlink_status_t mavStatus;
-//static mavlink_message_t mavMsg;
 
-static timeUs_t lastHeartbeatTimeUs = 0;
 bool mavlinkIsActive(void) {
     return mavlinkPort != NULL;
 }
 
+void mavlinkSendHeartbeat(timeUs_t now)
+{   
+    UNUSED(now);
+    if (!mavlinkIsActive() || mavlinkPort == NULL) {
+        return;
+    }
+
+    mavlink_message_t msg;
+    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+    mavlink_msg_heartbeat_pack(
+        1,                 // system ID (1 for FC)
+        200,               // component ID (usually 200 for autopilot)
+        &msg,
+        MAV_TYPE_QUADROTOR,       // type of vehicle
+        MAV_AUTOPILOT_GENERIC,    // autopilot type
+        MAV_MODE_MANUAL_ARMED,    // system mode
+        0,                        // custom mode
+        MAV_STATE_ACTIVE          // system state
+    );
+
+
+    uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
+    for(int i = 0; i < len; i++)
+        serialWrite(mavlinkPort, buf[1]);
+}
 void mavlinkRxHandleMessage(const mavlink_rc_channels_override_t *msg) {
     const uint16_t *channelsPtr = (const uint16_t*)&msg->chan1_raw;
     for (int i = 0; i < MAVLINK_CHANNEL_COUNT; i++) {
@@ -76,6 +110,23 @@ static uint8_t mavlinkFrameStatus(rxRuntimeState_t *rxRuntimeState)
     return RX_FRAME_PENDING;
 }
 
+static bool handleIncoming_RC_CHANNELS_OVERRIDE(void) {
+    mavlink_rc_channels_override_t msg;
+    mavlink_msg_rc_channels_override_decode(&mavRecvMsg, &msg);
+    mavlinkRxHandleMessage(&msg);
+    return true;
+}
+
+// Get RADIO_STATUS data
+static void handleIncoming_RADIO_STATUS(void)
+{
+    mavlink_radio_status_t msg;
+    mavlink_msg_radio_status_decode(&mavRecvMsg, &msg);
+    txbuff_valid = true;
+    txbuff_free = msg.txbuf;
+    DEBUG_SET(DEBUG_MAVLINK_TELEMETRY, 1, txbuff_free); // Last known TX buffer free space
+}
+
 static float mavlinkReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t channel)
 {
     UNUSED(rxRuntimeState);
@@ -83,118 +134,77 @@ static float mavlinkReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t ch
 }
 
 
-
+STATIC_UNIT_TESTED void mavlinkDataReceive(uint16_t c, void *data)
+{
+    rxRuntimeState_t *const rxRuntimeState = (rxRuntimeState_t *const)data;
+    uint8_t result = mavlink_parse_char(0, c, &mavRecvMsg, &mavRecvStatus);
+    if (result == MAVLINK_FRAMING_OK) {
+        switch (mavRecvMsg.msgid) {
+        case MAVLINK_MSG_ID_RC_CHANNELS_OVERRIDE:
+            handleIncoming_RC_CHANNELS_OVERRIDE();
+            rxRuntimeState->lastRcFrameTimeUs = micros();
+            break;
+        case MAVLINK_MSG_ID_RADIO_STATUS:
+            handleIncoming_RADIO_STATUS();
+            break;
+        }
+    }
+}
 
 bool mavlinkRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
 {
-    if (mavlinkIsActive()) return true;
-    // set up rx API
     frameReceived = false;
+    for (int i = 0; i < MAVLINK_CHANNEL_COUNT; ++i) {
+        mavlinkChannelData[i] = rxConfig->midrc;
+    }
+
     rxRuntimeState->channelData = mavlinkChannelData;
     rxRuntimeState->channelCount = MAVLINK_CHANNEL_COUNT;
     rxRuntimeState->rcReadRawFn = mavlinkReadRawRC;
     rxRuntimeState->rcFrameStatusFn = mavlinkFrameStatus;
 
-    for (int i = 0; i < MAVLINK_CHANNEL_COUNT; ++i) {
-        mavlinkChannelData[i] = rxConfig->midrc;
-    }
-    const serialPortConfig_t *portConfig = findSerialPortConfig(FUNCTION_RX_SERIAL); 
+    const serialPortConfig_t *portConfig = findSerialPortConfig(FUNCTION_RX_SERIAL);
     if (!portConfig) {
         return false;
     }
 
-    mavlinkPort = openSerialPort(portConfig->identifier,
-                                 FUNCTION_RX_SERIAL,
-                                 NULL, NULL,
-                                 MAVLINK_BAUDRATE,
-                                 MODE_RXTX,
-                                 SERIAL_NOT_INVERTED);
+    baudRate_e baudRateIndex = portConfig->telemetry_baudrateIndex;
+    if (baudRateIndex == BAUD_AUTO || (portConfig->functionMask & FUNCTION_TELEMETRY_MAVLINK) == 0) {
+        // default rate for ELRS TX module
+        baudRateIndex = MAVLINK_BAUD_RATE_INDEX;
+    }
 
+    mavlinkPort = openSerialPort(portConfig->identifier,
+        FUNCTION_RX_SERIAL,
+        mavlinkDataReceive,
+        rxRuntimeState,
+        baudRates[baudRateIndex],
+        MODE_RXTX,
+        (rxConfig->serialrx_inverted ? SERIAL_INVERTED : 0)
+    );
+#ifdef USE_TELEMETRY_MAVLINK
+    telemetrySharedPort = mavlinkPort;
+#endif
 
     return mavlinkPort != NULL;
 }
 
-
+#ifdef USE_TELEMETRY_MAVLINK
 bool isValidMavlinkTxBuffer (void) {
-    //TODO
-    return false;
+    return txbuff_valid;
 }
+
 bool shouldSendMavlinkTelemetry(void) {
-    return false;
+    const uint8_t mavlink_min_txbuff =  telemetryConfig()->mavlink_min_txbuff;
+    bool shouldSendTelemetry = false;
+
+    if (txbuff_valid) {
+        shouldSendTelemetry = txbuff_free > mavlink_min_txbuff;
+    }
+    DEBUG_SET(DEBUG_MAVLINK_TELEMETRY, 0, shouldSendTelemetry ? 1 : 0);
+
+    return shouldSendTelemetry;
 }
-
-
-
-void mavlinkSendHeartbeat(void)
-{
-    if (!mavlinkPort) {
-        return;
-    }
-
-    const uint32_t now = micros();
-    if (now - lastHeartbeatTimeUs < MAVLINK_HEARTBEAT_INTERVAL_US) {
-        return; // not time yet
-    }
-    lastHeartbeatTimeUs = now;
-
-    mavlink_message_t msg;
-    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
-
-    // Construct heartbeat message
-    mavlink_msg_heartbeat_pack(
-        1,                      // system_id (e.g. your TX)
-        MAV_COMP_ID_TELEMETRY_RADIO,  // component_id
-        &msg,
-        MAV_TYPE_GCS,           // type: GCS or generic controller
-        MAV_AUTOPILOT_INVALID,  // autopilot type (not an FC)
-        0,                      // base_mode
-        0,                      // custom_mode
-        MAV_STATE_ACTIVE        // system status
-    );
-
-    // Convert to wire format
-    uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
-
-    // Send over UART
-    for (uint16_t i = 0; i < len; i++) {
-        serialWrite(mavlinkPort, buf[i]);
-    }
-}
-
-
-void mavlinkRxUpdate(timeUs_t currentTimeUs)
-{
-    UNUSED(currentTimeUs);
-
-#ifdef USE_SERIALRX_MAVLINK
-
-    if (!mavlinkPort) {
-        return; // Port not ready yet
-    }
-
-    // 2. Check for available bytes
-    while (serialRxBytesWaiting(mavlinkPort)) {
-        uint8_t c = serialRead(mavlinkPort);
-
-        mavlink_message_t msg;
-        mavlink_status_t status;
-
-        // 3. Parse the byte
-        if (mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)) {
-            switch (msg.msgid) {
-            case MAVLINK_MSG_ID_RC_CHANNELS_OVERRIDE: {
-                mavlink_rc_channels_override_t rc;
-                mavlink_msg_rc_channels_override_decode(&msg, &rc);
-                mavlinkRxHandleMessage(&rc);
-                break;
-            }
-            default:
-                break;
-            }
-        }
-    }
-
-    // 4. Optionally send periodic heartbeat (non-blocking)
-    mavlinkSendHeartbeat();
 #endif
-}
+
+#endif 
