@@ -84,8 +84,11 @@
 #include "pg/rx.h"
 #include "pg/motor.h"
 
+
 #include "rx/rx.h"
 #include "rx/rc_stats.h"
+
+
 
 #include "scheduler/scheduler.h"
 
@@ -110,7 +113,7 @@
 #ifdef USE_USB_CDC_HID
 #include "io/usb_cdc_hid.h"
 #endif
-
+#include "rx/mavlink.h"
 #include "tasks.h"
 
 // taskUpdateRxMain() has occasional peaks in execution time so normal moving average duration estimation doesn't work
@@ -132,8 +135,23 @@ static void taskMain(timeUs_t currentTimeUs)
 #endif
 }
 
+static void taskProcessMAVLink(timeUs_t currentTimeUs){
+    static timeUs_t lastHeartbeatTimeUs = 0;
+    static uint8_t heartbeatCounter = 0;
+    if (currentTimeUs - lastHeartbeatTimeUs > 1000000) {
+        sendMAVLinkHeartbeat();
+        heartbeatCounter++;
+        if (heartbeatCounter > 250) heartbeatCounter = 0;
+        lastHeartbeatTimeUs = currentTimeUs;
+        DEBUG_SET(DEBUG_MAVLINK, 3, heartbeatCounter);
+        
+    }
+}
+
+
 static void taskHandleSerial(timeUs_t currentTimeUs)
-{
+{   
+
     UNUSED(currentTimeUs);
 
 #if defined(USE_VCP)
@@ -143,6 +161,10 @@ static void taskHandleSerial(timeUs_t currentTimeUs)
 
     bool evaluateMspData = ARMING_FLAG(ARMED) ? MSP_SKIP_NON_MSP_DATA : MSP_EVALUATE_NON_MSP_DATA;
     mspSerialProcess(evaluateMspData, mspFcProcessCommand, mspFcProcessReply);
+    
+    #ifdef USE_SERIALRX_MAVLINK
+        taskProcessMAVLink(currentTimeUs);
+    #endif
 }
 
 static void taskBatteryAlerts(timeUs_t currentTimeUs)
@@ -545,6 +567,7 @@ void tasksInit(void)
     }
 #endif
 
+
 #ifdef USE_OPTICALFLOW
     if (sensors(SENSOR_OPTICALFLOW)) {
         setTaskEnabled(TASK_OPTICALFLOW, featureIsEnabled(FEATURE_OPTICALFLOW));
@@ -671,4 +694,5 @@ void tasksInit(void)
 #ifdef USE_GIMBAL
     setTaskEnabled(TASK_GIMBAL, true);
 #endif
+
 }

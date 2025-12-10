@@ -78,12 +78,7 @@ task_attribute_t task_attributes[TASK_COUNT] = {
         .desiredPeriodUs = TASK_PERIOD_HZ(1000),
         .staticPriority = TASK_PRIORITY_MEDIUM,
     },
-    [TASK_ATTITUDE] = {
-        .taskName = "ATTITUDE",
-        .taskFunc = imuUpdateAttitude,
-        .desiredPeriodUs = TASK_PERIOD_HZ(100),
-        .staticPriority = TASK_PRIORITY_MEDIUM,
-    },
+
     [TASK_RX] = {
         .taskName = "RX",
         .checkFunc = rxUpdateCheck,

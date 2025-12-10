@@ -20,6 +20,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+
+
 #include "platform.h"
 #ifdef USE_SERIALRX_MAVLINK
 
@@ -30,6 +33,7 @@
 
 #include "rx/rx.h"
 #include "rx/mavlink.h"
+#include "mavlink_types.h"
 
 #ifdef USE_TELEMETRY
 #include "telemetry/telemetry.h"
@@ -129,6 +133,36 @@ static void handleIncoming_RADIO_STATUS(void)
     DEBUG_SET(DEBUG_MAVLINK_TELEMETRY, 1, txbuff_free); // Last known TX buffer free space
 }
 
+void sendMAVLinkHeartbeat(void){
+    if (serialPort == NULL) {
+        return;
+    }
+    mavlink_message_t msg;
+    mavlink_msg_heartbeat_pack(1, 1, &msg, MAV_TYPE_QUADROTOR,  MAV_AUTOPILOT_INVALID,
+                              MAV_MODE_FLAG_CUSTOM_MODE_ENABLED, 0, MAV_STATE_ACTIVE);
+
+
+    uint8_t buff[MAVLINK_MAX_PACKET_LEN];
+    uint16_t len = mavlink_msg_to_send_buffer(buff, &msg);
+    
+    for (uint16_t i = 0; i < len; i++)
+        serialWrite(serialPort, buff[i]);
+      
+}
+
+static void handleIncoming_HEARTBEAT(void){
+    mavlink_heartbeat_t msg;
+    mavlink_msg_heartbeat_decode(&mavRecvMsg, &msg);
+    
+    DEBUG_SET(DEBUG_MAVLINK, 0, msg.type);
+    DEBUG_SET(DEBUG_MAVLINK, 1, msg.autopilot);   
+
+    sendMAVLinkHeartbeat();
+    
+
+}
+
+
 STATIC_UNIT_TESTED void mavlinkDataReceive(uint16_t c, void *data)
 {
     rxRuntimeState_t *const rxRuntimeState = (rxRuntimeState_t *const)data;
@@ -142,6 +176,8 @@ STATIC_UNIT_TESTED void mavlinkDataReceive(uint16_t c, void *data)
         case MAVLINK_MSG_ID_RADIO_STATUS:
             handleIncoming_RADIO_STATUS();
             break;
+        case MAVLINK_MSG_ID_HEARTBEAT:
+            handleIncoming_HEARTBEAT();
         }
     }
 }
