@@ -135,18 +135,6 @@ static void taskMain(timeUs_t currentTimeUs)
 #endif
 }
 
-static void taskProcessMAVLink(timeUs_t currentTimeUs){
-    static timeUs_t lastHeartbeatTimeUs = 0;
-    static uint8_t heartbeatCounter = 0;
-    if (currentTimeUs - lastHeartbeatTimeUs > 1000000) {
-        sendMAVLinkHeartbeat();
-        heartbeatCounter++;
-        if (heartbeatCounter > 250) heartbeatCounter = 0;
-        lastHeartbeatTimeUs = currentTimeUs;
-        DEBUG_SET(DEBUG_MAVLINK, 3, heartbeatCounter);
-        
-    }
-}
 
 
 static void taskHandleSerial(timeUs_t currentTimeUs)
@@ -162,9 +150,7 @@ static void taskHandleSerial(timeUs_t currentTimeUs)
     bool evaluateMspData = ARMING_FLAG(ARMED) ? MSP_SKIP_NON_MSP_DATA : MSP_EVALUATE_NON_MSP_DATA;
     mspSerialProcess(evaluateMspData, mspFcProcessCommand, mspFcProcessReply);
     
-    #ifdef USE_SERIALRX_MAVLINK
-        taskProcessMAVLink(currentTimeUs);
-    #endif
+   
 }
 
 static void taskBatteryAlerts(timeUs_t currentTimeUs)

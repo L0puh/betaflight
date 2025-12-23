@@ -24,11 +24,13 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 #include "common/mavlink.h"
+#include "rx/rx.h"   
 #pragma GCC diagnostic pop
 
 void mavlinkRxHandleMessage(const mavlink_rc_channels_override_t *msg);
 bool mavlinkRxInit(const rxConfig_t *initialRxConfig, rxRuntimeState_t *rxRuntimeState);
-void sendMAVLinkHeartbeat(void);
+void mavlinkProcess(void);
+void mavlinkSendHeartbeat(void);
 
 #if defined(USE_SERIALRX_MAVLINK)
 bool isValidMavlinkTxBuffer (void);

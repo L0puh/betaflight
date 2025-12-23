@@ -23,6 +23,7 @@
 #include <stdint.h>
 
 #include "platform.h"
+#include "rx/mavlink.h"
 
 #ifdef USE_TELEMETRY
 
@@ -236,6 +237,13 @@ void telemetryProcess(uint32_t currentTime)
 #ifdef USE_TELEMETRY_MAVLINK
     handleMAVLinkTelemetry();
 #endif
+#ifdef USE_SERIALRX_MAVLINK
+    static timeUs_t lastHb = 0;
+    if (cmpTimeUs(micros(), lastHb) >= 1000000) {
+        lastHb = micros();
+        mavlinkSendHeartbeat();
+    }
+#endif
 #ifdef USE_TELEMETRY_CRSF
     handleCrsfTelemetry(currentTime);
 #endif
@@ -248,7 +256,9 @@ void telemetryProcess(uint32_t currentTime)
 #ifdef USE_TELEMETRY_IBUS
     handleIbusTelemetry();
 #endif
+
 }
+
 
 bool telemetryIsSensorEnabled(sensor_e sensor)
 {

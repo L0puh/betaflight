@@ -690,6 +690,12 @@ void handleMAVLinkTelemetry(void)
         processMAVLinkTelemetry();
         lastMavlinkMessageTime = now;
     }
+    static timeUs_t lastHb = 0;
+
+    if (cmpTimeUs(micros(), lastHb) >= 1000000) {
+        lastHb = micros();
+        mavlinkSendHUDAndHeartbeat();
+    }
 }
 
 #endif
