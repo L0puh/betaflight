@@ -179,6 +179,7 @@ bool telemetryCheckRxPortShared(const serialPortConfig_t *portConfig, const Seri
 
 serialPort_t *telemetrySharedPort = NULL;
 
+
 void telemetryCheckState(void)
 {
 #ifdef USE_TELEMETRY_FRSKY_HUB
@@ -237,13 +238,14 @@ void telemetryProcess(uint32_t currentTime)
 #ifdef USE_TELEMETRY_MAVLINK
     handleMAVLinkTelemetry();
 #endif
-#ifdef USE_SERIALRX_MAVLINK
-    static timeUs_t lastHb = 0;
-    if (cmpTimeUs(micros(), lastHb) >= 1000000) {
-        lastHb = micros();
-        mavlinkSendHeartbeat();
-    }
-#endif
+// P.S. it's already handled by mavlinkTelemetry 
+// #ifdef USE_SERIALRX_MAVLINK
+//     static timeUs_t lastHb = 0;
+//     if (cmpTimeUs(micros(), lastHb) >= 1000000) {
+//         lastHb = micros();
+//         mavlinkSendHeartbeat();
+//     }
+// #endif
 #ifdef USE_TELEMETRY_CRSF
     handleCrsfTelemetry(currentTime);
 #endif

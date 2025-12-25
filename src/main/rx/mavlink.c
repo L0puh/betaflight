@@ -1,7 +1,9 @@
+#include "telemetry/mavlink.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
 
 #include "platform.h"
 #ifdef USE_SERIALRX_MAVLINK
@@ -102,29 +104,14 @@ static void handleIncoming_SET_ATTITUDE_TARGET(void)
 
 
     DEBUG_SET(DEBUG_MAVLINK, 0, (int)(msg.thrust * 1000));
-
-  
-    mavlink_message_t ack;
-    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
-
-    mavlink_msg_command_ack_pack(
-        MAV_SYS_ID,
-        MAV_COMP_ID,
-        &ack,
-        MAV_CMD_DO_SET_ACTUATOR,
-        MAV_RESULT_ACCEPTED,
-        0, 0, 0, 0
-    );
-
-    uint16_t len = mavlink_msg_to_send_buffer(buf, &ack);
-    for (uint16_t i = 0; i < len; i++) {
-        serialWrite(serialPort, buf[i]);
-    }
+ 
+       
+    send_mavlink_ack(mavRecvMsg.sysid, mavRecvMsg.compid);
 }
-
 
 STATIC_UNIT_TESTED void mavlinkDataReceive(uint16_t c, void *data)
 {
+    
     rxRuntimeState_t *const rxRuntimeState = (rxRuntimeState_t *const)data;
 
     if (mavlink_parse_char(0, c, &mavRecvMsg, &mavRecvStatus) == MAVLINK_FRAMING_OK) {
@@ -142,38 +129,9 @@ STATIC_UNIT_TESTED void mavlinkDataReceive(uint16_t c, void *data)
         case MAVLINK_MSG_ID_SET_ATTITUDE_TARGET:  
             handleIncoming_SET_ATTITUDE_TARGET();
             break;
-
         default:
             break;
         }
-    }
-}
-
-
-
- void mavlinkSendHeartbeat(void)
-{
-    if (!serialPort) {
-        return;
-    }
-
-    mavlink_message_t msg;
-    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
-
-    mavlink_msg_heartbeat_pack(
-        MAV_SYS_ID,
-        MAV_COMP_ID,
-        &msg,
-        MAV_TYPE_QUADROTOR,
-        MAV_AUTOPILOT_GENERIC,
-        MAV_MODE_GUIDED_ARMED,
-        0,
-        MAV_STATE_ACTIVE
-    );
-
-    uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
-    for (uint16_t i = 0; i < len; i++) {
-        serialWrite(serialPort, buf[i]);
     }
 }
 
@@ -186,21 +144,23 @@ bool mavlinkRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
         mavlinkChannelData[i] = rxConfig->midrc;
     }
 
+    DEBUG_SET(DEBUG_MAVLINK, 1, 2);
     rxRuntimeState->channelData = mavlinkChannelData;
     rxRuntimeState->channelCount = MAVLINK_CHANNEL_COUNT;
     rxRuntimeState->rcReadRawFn = mavlinkReadRawRC;
     rxRuntimeState->rcFrameStatusFn = mavlinkFrameStatus;
 
     const serialPortConfig_t *portConfig =
-        findSerialPortConfig(FUNCTION_TELEMETRY_MAVLINK);
+        findSerialPortConfig(FUNCTION_RX_SERIAL);
 
     if (!portConfig) {
+        DEBUG_SET(DEBUG_MAVLINK, 1, -2);
         return false;
     }
 
     serialPort = openSerialPort(
         portConfig->identifier,
-        FUNCTION_TELEMETRY_MAVLINK,
+        FUNCTION_RX_SERIAL,
         mavlinkDataReceive,
         rxRuntimeState,
         baudRates[MAVLINK_BAUD_RATE_INDEX],
@@ -208,10 +168,12 @@ bool mavlinkRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
         SERIAL_NOT_INVERTED
     );
 
-#ifdef USE_TELEMETRY_MAVLINK
-    telemetrySharedPort = serialPort;
-#endif
+    #ifdef USE_TELEMETRY_MAVLINK
+        telemetrySharedPort = serialPort;
+        DEBUG_SET(DEBUG_MAVLINK, 1, -3);
+    #endif
 
+    DEBUG_SET(DEBUG_MAVLINK, 1, 3);
     return serialPort != NULL;
 }
 
@@ -225,7 +187,7 @@ bool isValidMavlinkTxBuffer(void)
 
 bool shouldSendMavlinkTelemetry(void)
 {
-    return true;   
+    return false;   
 }
 #endif
 

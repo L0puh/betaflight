@@ -100,11 +100,30 @@ static uint32_t lastMavlinkMessageTime = 0;
 static mavlink_message_t mavMsg;
 static uint8_t mavBuffer[MAVLINK_MAX_PACKET_LEN];
 
+
 static void mavlinkSerialWrite(uint8_t * buf, uint16_t length)
 {
     for (int i = 0; i < length; i++)
         serialWrite(mavlinkPort, buf[i]);
 }
+
+void send_mavlink_ack(uint8_t sys, uint8_t compid){
+   mavlink_message_t ack;
+    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+
+    mavlink_msg_command_ack_pack(
+        sys,
+        compid,
+        &ack,
+        MAV_CMD_DO_SET_ACTUATOR,
+        MAV_RESULT_ACCEPTED,
+        0, 0, 0, 0
+    );
+
+    uint16_t len = mavlink_msg_to_send_buffer(buf, &ack);
+    mavlinkSerialWrite(buf, len);
+}
+
 
 static int16_t headingOrScaledMilliAmpereHoursDrawn(void)
 {
@@ -385,7 +404,90 @@ static void mavlinkSendAttitude(void)
     DEBUG_SET(DEBUG_MAVLINK_TELEMETRY, 5, transmitCounter);
     transmitCounter = (transmitCounter + 1) % 100;
 }
+static void mavlinkSendHeartbeat(void){
+    uint16_t msgLength;
+ 
+    uint8_t mavModes = MAV_MODE_MANUAL_DISARMED;
+    if (ARMING_FLAG(ARMED))
+        mavModes |= MAV_MODE_MANUAL_ARMED;
 
+    uint8_t mavSystemType;
+    switch (mixerConfig()->mixerMode)
+    {
+        case MIXER_TRI:
+            mavSystemType = MAV_TYPE_TRICOPTER;
+            break;
+        case MIXER_QUADP:
+        case MIXER_QUADX:
+        case MIXER_Y4:
+        case MIXER_VTAIL4:
+            mavSystemType = MAV_TYPE_QUADROTOR;
+            break;
+        case MIXER_Y6:
+        case MIXER_HEX6:
+        case MIXER_HEX6X:
+            mavSystemType = MAV_TYPE_HEXAROTOR;
+            break;
+        case MIXER_OCTOX8:
+        case MIXER_OCTOX8P:
+        case MIXER_OCTOFLATP:
+        case MIXER_OCTOFLATX:
+            mavSystemType = MAV_TYPE_OCTOROTOR;
+            break;
+        case MIXER_FLYING_WING:
+        case MIXER_AIRPLANE:
+        case MIXER_CUSTOM_AIRPLANE:
+            mavSystemType = MAV_TYPE_FIXED_WING;
+            break;
+        case MIXER_HELI_120_CCPM:
+        case MIXER_HELI_90_DEG:
+            mavSystemType = MAV_TYPE_HELICOPTER;
+            break;
+        default:
+            mavSystemType = MAV_TYPE_GENERIC;
+            break;
+    }
+
+    // Custom mode for compatibility with APM OSDs
+    uint8_t mavCustomMode = 1;  // Acro by default
+
+    if (FLIGHT_MODE(ANGLE_MODE | HORIZON_MODE | ALT_HOLD_MODE | POS_HOLD_MODE)) {
+        mavCustomMode = 0;      //Stabilize
+        mavModes |= MAV_MODE_FLAG_STABILIZE_ENABLED;
+    }
+
+    uint8_t mavSystemState = 0;
+    if (ARMING_FLAG(ARMED)) {
+        if (failsafeIsActive()) {
+            mavSystemState = MAV_STATE_CRITICAL;
+        }
+        else {
+            mavSystemState = MAV_STATE_ACTIVE;
+        }
+    }
+    else {
+        mavSystemState = MAV_STATE_STANDBY;
+    }
+
+    mavlink_msg_heartbeat_pack(MAVLINK_SYSTEM_ID, MAVLINK_COMPONENT_ID, &mavMsg,
+        // type Type of the MAV (quadrotor, helicopter, etc., up to 15 types, defined in MAV_TYPE ENUM)
+        mavSystemType,
+        // autopilot Autopilot type / class. defined in MAV_AUTOPILOT ENUM
+        MAV_AUTOPILOT_GENERIC,
+        // base_mode System mode bitfield, see MAV_MODE_FLAGS ENUM in mavlink/include/mavlink_types.h
+        mavModes,
+        // custom_mode A bitfield for use for autopilot-specific flags.
+        mavCustomMode,
+        // system_status System status flag, see MAV_STATE ENUM
+        mavSystemState);
+    msgLength = mavlink_msg_to_send_buffer(mavBuffer, &mavMsg);
+    mavlinkSerialWrite(mavBuffer, msgLength);
+
+    // Packets transmit counter to debug actual data rate
+    static uint32_t transmitCounter = 0;
+    DEBUG_SET(DEBUG_MAVLINK_TELEMETRY, 6, transmitCounter);
+    transmitCounter = (transmitCounter + 1) % 100;
+    }
 static void mavlinkSendHUDAndHeartbeat(void)
 {
     uint16_t msgLength;
@@ -500,6 +602,7 @@ static void mavlinkSendHUDAndHeartbeat(void)
     DEBUG_SET(DEBUG_MAVLINK_TELEMETRY, 6, transmitCounter);
     transmitCounter = (transmitCounter + 1) % 100;
 }
+
 
 static void mavlinkSendBatteryStatus(void)
 {
@@ -677,9 +780,12 @@ void handleMAVLinkTelemetry(void)
     if (!mavlinkTelemetryEnabled || !mavlinkPort) {
         return;
     }
-
+       
     bool shouldSendTelemetry = false;
     uint32_t now = micros();
+    static timeUs_t lastHb = 0;
+    
+ 
     if (isValidMavlinkTxBuffer()) {
         shouldSendTelemetry = shouldSendMavlinkTelemetry();
     } else if ((now - lastMavlinkMessageTime) >= TELEMETRY_MAVLINK_DELAY) {
@@ -688,13 +794,15 @@ void handleMAVLinkTelemetry(void)
 
     if (shouldSendTelemetry) {
         processMAVLinkTelemetry();
+        DEBUG_SET(DEBUG_MAVLINK, 2, 5);
         lastMavlinkMessageTime = now;
     }
-    static timeUs_t lastHb = 0;
+   
 
     if (cmpTimeUs(micros(), lastHb) >= 1000000) {
         lastHb = micros();
-        mavlinkSendHUDAndHeartbeat();
+        mavlinkSendHeartbeat();
+        DEBUG_SET(DEBUG_MAVLINK, 2, 5);
     }
 }
 

@@ -30,7 +30,7 @@
 void mavlinkRxHandleMessage(const mavlink_rc_channels_override_t *msg);
 bool mavlinkRxInit(const rxConfig_t *initialRxConfig, rxRuntimeState_t *rxRuntimeState);
 void mavlinkProcess(void);
-void mavlinkSendHeartbeat(void);
+// void mavlinkSendHeartbeat(void);
 
 #if defined(USE_SERIALRX_MAVLINK)
 bool isValidMavlinkTxBuffer (void);

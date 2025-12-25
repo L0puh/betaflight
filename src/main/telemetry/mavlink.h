@@ -21,6 +21,8 @@
 #pragma once
 
 #include "common/time.h"
+#include <stdint.h>
+
 
 void initMAVLinkTelemetry(void);
 void handleMAVLinkTelemetry(void);
@@ -28,6 +30,8 @@ void checkMAVLinkTelemetryState(void);
 
 void freeMAVLinkTelemetryPort(void);
 void configureMAVLinkTelemetryPort(void);
+
+void send_mavlink_ack(uint8_t sys, uint8_t id);
 
 typedef struct mavlinkTelemetryStream_s {
     uint8_t rate;
