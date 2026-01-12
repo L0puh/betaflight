@@ -138,11 +138,11 @@
       "-fmerge-all-constants",
       "-O2",
       "-o",
-      "obj/main/STM32F7X2_IFLIGHT_BLITZ_F722/telemetry/mavlink.o",
-      "./src/main/telemetry/mavlink.c"
+      "obj/main/STM32F7X2_IFLIGHT_BLITZ_F722/rx/mavlink.o",
+      "./src/main/rx/mavlink.c"
     ],
     "directory": "/home/lopuh/downloads/betaflight",
-    "file": "/home/lopuh/downloads/betaflight/src/main/telemetry/mavlink.c",
-    "output": "/home/lopuh/downloads/betaflight/obj/main/STM32F7X2_IFLIGHT_BLITZ_F722/telemetry/mavlink.o"
+    "file": "/home/lopuh/downloads/betaflight/src/main/rx/mavlink.c",
+    "output": "/home/lopuh/downloads/betaflight/obj/main/STM32F7X2_IFLIGHT_BLITZ_F722/rx/mavlink.o"
   }
 ]

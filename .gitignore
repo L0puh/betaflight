@@ -1,4 +1,5 @@
 *.o
+.venv
 .DS_Store
 *~
 *.uvopt

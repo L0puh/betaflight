@@ -84,10 +84,9 @@
 #include "pg/rx.h"
 #include "pg/motor.h"
 
-
 #include "rx/rx.h"
 #include "rx/rc_stats.h"
-
+#include "rx/mavlink.h"
 
 
 #include "scheduler/scheduler.h"
@@ -183,6 +182,8 @@ bool taskUpdateRxMainInProgress(void)
 {
     return (rxState != RX_STATE_CHECK);
 }
+
+
 
 static void taskUpdateRxMain(timeUs_t currentTimeUs)
 {
@@ -486,6 +487,9 @@ task_attribute_t task_attributes[TASK_COUNT] = {
 #ifdef USE_GIMBAL
     [TASK_GIMBAL] = DEFINE_TASK("GIMBAL", NULL, NULL, gimbalUpdate, TASK_PERIOD_HZ(100), TASK_PRIORITY_MEDIUM),
 #endif
+#ifdef USE_MAVLINK
+    [TASK_MAVLINK] = DEFINE_TASK("MAVLINK", NULL, NULL, taskProcessMavlink, TASK_PERIOD_HZ(100), TASK_PRIORITY_MEDIUM),
+#endif 
 };
 
 task_t *getTask(unsigned taskId)
@@ -680,5 +684,7 @@ void tasksInit(void)
 #ifdef USE_GIMBAL
     setTaskEnabled(TASK_GIMBAL, true);
 #endif
-
+#ifdef USE_MAVLINK
+    setTaskEnabled(TASK_MAVLINK,true);
+#endif
 }

@@ -6,7 +6,8 @@
 
 
 #include "platform.h"
-#ifdef USE_SERIALRX_MAVLINK
+#include "stm32f7xx_hal_def.h"
+#if defined(USE_SERIALRX_MAVLINK) || defined(USE_MAVLINK)
 
 #include "common/utils.h"
 #include "common/maths.h"
@@ -64,6 +65,7 @@ void mavlinkRxHandleMessage(const mavlink_rc_channels_override_t *msg)
     frameReceived = true;
 }
 
+#ifdef USE_SERIALRX_MAVLINK
 static uint8_t mavlinkFrameStatus(rxRuntimeState_t *rxRuntimeState)
 {
     UNUSED(rxRuntimeState);
@@ -79,7 +81,7 @@ static float mavlinkReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t ch
     UNUSED(rxRuntimeState);
     return mavlinkChannelData[channel];
 }
-
+#endif 
 
 static void handleIncoming_RC_CHANNELS_OVERRIDE(void)
 {
@@ -102,9 +104,7 @@ static void handleIncoming_SET_ATTITUDE_TARGET(void)
     mavlink_set_attitude_target_t msg;
     mavlink_msg_set_attitude_target_decode(&mavRecvMsg, &msg);
 
-
     DEBUG_SET(DEBUG_MAVLINK, 0, (int)(msg.thrust * 1000));
- 
        
     send_mavlink_ack(mavRecvMsg.sysid, mavRecvMsg.compid);
 }
@@ -119,7 +119,8 @@ STATIC_UNIT_TESTED void mavlinkDataReceive(uint16_t c, void *data)
 
         case MAVLINK_MSG_ID_RC_CHANNELS_OVERRIDE:
             handleIncoming_RC_CHANNELS_OVERRIDE();
-            rxRuntimeState->lastRcFrameTimeUs = micros();
+            if (rxRuntimeState)
+                rxRuntimeState->lastRcFrameTimeUs = micros();
             break;
 
         case MAVLINK_MSG_ID_RADIO_STATUS:
@@ -135,7 +136,7 @@ STATIC_UNIT_TESTED void mavlinkDataReceive(uint16_t c, void *data)
     }
 }
 
-
+#ifdef USE_SERIALRX_MAVLINK
 
 bool mavlinkRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
 {
@@ -154,7 +155,7 @@ bool mavlinkRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
         findSerialPortConfig(FUNCTION_RX_SERIAL);
 
     if (!portConfig) {
-        DEBUG_SET(DEBUG_MAVLINK, 1, -2);
+        DEBUG_SET(DEBUG_MAVLINK, 1, -1);
         return false;
     }
 
@@ -177,6 +178,47 @@ bool mavlinkRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
     return serialPort != NULL;
 }
 
+#endif 
+
+ void taskProcessMavlink(timeUs_t currentTimeUs) {
+    UNUSED(currentTimeUs);
+
+    if (!serialPort) {
+        const serialPortConfig_t *portConfig = findSerialPortConfig(FUNCTION_TELEMETRY_MAVLINK);
+        if (!portConfig) {
+             DEBUG_SET(DEBUG_MAVLINK, 1, -2);
+            return;
+        }
+        serialPort = openSerialPort(
+            portConfig->identifier,
+            FUNCTION_TELEMETRY_MAVLINK,  
+            NULL, 
+            NULL,
+            baudRates[MAVLINK_BAUD_RATE_INDEX],
+            MODE_RXTX,
+            SERIAL_NOT_INVERTED
+        );
+        
+        #ifdef USE_TELEMETRY_MAVLINK
+        telemetrySharedPort = serialPort;
+        DEBUG_SET(DEBUG_MAVLINK, 4, 5);
+        #endif
+
+        DEBUG_SET(DEBUG_MAVLINK, 1, 4);
+        if (!serialPort) {
+            return;
+        }
+    }
+    
+   
+    while (serialRxBytesWaiting(serialPort) > 0) {
+        uint8_t c = serialRead(serialPort);
+        mavlinkDataReceive(c,NULL);
+        DEBUG_SET(DEBUG_MAVLINK, 5, c);
+    }
+        
+   
+}
 
 
 #ifdef USE_TELEMETRY_MAVLINK
