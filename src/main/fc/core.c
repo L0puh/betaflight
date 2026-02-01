@@ -24,6 +24,7 @@
 #include <string.h>
 #include <math.h>
 
+#include "fc/control_mode.h"
 #include "platform.h"
 
 #include "blackbox/blackbox.h"
@@ -1002,7 +1003,8 @@ void processRxModes(timeUs_t currentTimeUs)
 #endif
         ) {
         processRcStickPositions();
-    }
+       
+    } 
 
     if (featureIsEnabled(FEATURE_INFLIGHT_ACC_CAL)) {
         updateInflightCalibrationState();
@@ -1039,6 +1041,17 @@ void processRxModes(timeUs_t currentTimeUs)
     } else {
         DISABLE_FLIGHT_MODE(ANGLE_MODE); // failsafe support
     }
+
+
+    #ifdef USE_SERIAL_MAVLINK
+    if (IS_RC_MODE_ACTIVE(BOXMAVLINK)){
+        setControlMode(CONTROL_MODE_MAVLINK);
+        DEBUG_SET(DEBUG_MAVLINK, 5, 4);
+    } else {
+        setControlMode(CONTROL_MODE_RC);
+        DEBUG_SET(DEBUG_MAVLINK, 5, 3);
+    }
+    #endif
 
 #ifdef USE_ALTITUDE_HOLD
     // only if armed; can coexist with position hold

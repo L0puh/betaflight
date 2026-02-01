@@ -268,7 +268,7 @@ static bool serialRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntime
         enabled = fportRxInit(rxConfig, rxRuntimeState);
         break;
 #endif
-#ifdef USE_SERIALRX_MAVLINK
+#ifdef USE_SERIAL_MAVLINK
     case SERIALRX_MAVLINK:
         enabled = mavlinkRxInit(rxConfig, rxRuntimeState);
         break;

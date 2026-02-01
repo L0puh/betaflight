@@ -107,22 +107,6 @@ static void mavlinkSerialWrite(uint8_t * buf, uint16_t length)
         serialWrite(mavlinkPort, buf[i]);
 }
 
-void send_mavlink_ack(uint8_t sys, uint8_t compid){
-   mavlink_message_t ack;
-    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
-
-    mavlink_msg_command_ack_pack(
-        sys,
-        compid,
-        &ack,
-        MAV_CMD_DO_SET_ACTUATOR,
-        MAV_RESULT_ACCEPTED,
-        0, 0, 0, 0
-    );
-
-    uint16_t len = mavlink_msg_to_send_buffer(buf, &ack);
-    mavlinkSerialWrite(buf, len);
-}
 
 
 static int16_t headingOrScaledMilliAmpereHoursDrawn(void)

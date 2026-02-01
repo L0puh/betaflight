@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
-
+#include "fc/control_mode.h"
 #include "platform.h"
 
 #include "build/debug.h"
@@ -48,11 +48,13 @@
 
 #include "pg/rx.h"
 #include "rx/rx.h"
+#include "rx/mavlink.h"
 
 #include "sensors/battery.h"
 #include "sensors/gyro.h"
 
 #include "rc.h"
+
 
 #define RX_INTERVAL_MIN_US     800 // 0.800ms to fit 1kHz without an issue often 1khz rc comes in at 880us or so
 #define RX_INTERVAL_MAX_US   65500 // 65.5ms or 15.26hz
@@ -693,9 +695,16 @@ FAST_CODE void processRcCommand(void)
     isRxDataNew = false;
 }
 
+
+
 FAST_CODE_NOINLINE void updateRcCommands(void)
 {
     isRxDataNew = true;
+    if (isMode(CONTROL_MODE_MAVLINK)){
+        updateRcCommandsFromMavlink();
+        return;
+    }
+
 
     for (int axis = 0; axis < 3; axis++) {
         float rc = constrainf(rcData[axis] - rxConfig()->midrc, -500.0f, 500.0f); // -500 to 500
