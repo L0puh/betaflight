@@ -340,7 +340,7 @@ static void cliWriterFlush(void)
     cliWriterFlushInternal(cliWriter);
 }
 
-#ifdef USE_CLI_DEBUG_PRINT
+#if defined(USE_CLI_DEBUG_PRINT) 
 #define CLI_DEBUG_EXPORT /* empty */
 #else
 #define CLI_DEBUG_EXPORT static
@@ -2932,6 +2932,14 @@ static void printVtxTable(dumpFlags_t dumpMask, const vtxTableConfig_t *currentC
     headingStr = printVtxTablePowerLabels(dumpMask, currentConfig, defaultConfig, headingStr);
 }
 
+
+static void cliMavlinkDebug(const char *cmdName, char *cmdline){
+    UNUSED(cmdName);
+    UNUSED(cmdline);
+    cliPrintLinef("Welcome to DEBUGING MAVLINK");
+    cliPrintLinef("CUSTOM MODE PROCESS RC MODE IS %s\n", IS_RC_MODE_ACTIVE(BOXCUSTOM) ? "ACTIVE": "NOT ACTIVE");
+    cliPrintLinef("CUSTOM MODE PROCESS FLIGHT MODE IS %s\n", FLIGHT_MODE(CUSTOM_MODE) ? "ACTIVE": "NOT ACTIVE");
+}
 static void cliVtxTable(const char *cmdName, char *cmdline)
 {
     char *tok;
@@ -6716,6 +6724,9 @@ const clicmd_t cmdTable[] = {
     CLI_COMMAND_DEF("vtx_info", "vtx power config dump", NULL, cliVtxInfo),
     CLI_COMMAND_DEF("vtxtable", "vtx frequency table", "<band> <bandname> <bandletter> [FACTORY|CUSTOM] <freq> ... <freq>\r\n", cliVtxTable),
 #endif
+#ifdef USE_MAVLINK
+    CLI_COMMAND_DEF("debug_mavlink", "prints current values", NULL, cliMavlinkDebug),
+#endif 
 };
 
 static void cliHelp(const char *cmdName, char *cmdline)

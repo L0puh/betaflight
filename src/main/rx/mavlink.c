@@ -69,7 +69,6 @@ static volatile uint8_t txbuff_free = 100;
 static volatile bool txbuff_valid = false;
 
 
-
 void mavlinkRxHandleMessage(const mavlink_rc_channels_override_t *msg)
 {
     const uint16_t *channelsPtr = (uint16_t*)&msg->chan1_raw;
@@ -143,6 +142,9 @@ static void handleIncoming_RADIO_STATUS(void)
     txbuff_free = msg.txbuf;
 }
 
+void processMavlink(void) {
+    
+}
 
 static void handleIncoming_SET_ATTITUDE_TARGET(void)
 {
@@ -187,7 +189,7 @@ STATIC_UNIT_TESTED void mavlinkDataReceive(uint16_t c, void *data)
         }
     }
 }
-void updateRcCommandsFromMavlink(){
+void updateRcCommandsFromMavlink(void){
     return;
 }
 

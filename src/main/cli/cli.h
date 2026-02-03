@@ -28,7 +28,7 @@ bool cliProcess(void);
 struct serialPort_s;
 void cliEnter(struct serialPort_s *serialPort, bool interactive);
 
-#ifdef USE_CLI_DEBUG_PRINT
+#if defined(USE_CLI_DEBUG_PRINT)
 void cliPrint(const char *str);
 void cliPrintLinefeed(void);
 void cliPrintLine(const char *str);

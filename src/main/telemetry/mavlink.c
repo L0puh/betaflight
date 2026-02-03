@@ -108,7 +108,6 @@ static void mavlinkSerialWrite(uint8_t * buf, uint16_t length)
 }
 
 
-
 static int16_t headingOrScaledMilliAmpereHoursDrawn(void)
 {
     if (isAmperageConfigured() && telemetryConfig()->mavlink_mah_as_heading_divisor > 0) {
@@ -144,7 +143,13 @@ void configureMAVLinkTelemetryPort(void)
         baudRateIndex = BAUD_57600;
     }
 
-    mavlinkPort = openSerialPort(portConfig->identifier, FUNCTION_TELEMETRY_MAVLINK, NULL, NULL, baudRates[baudRateIndex], TELEMETRY_MAVLINK_INITIAL_PORT_MODE, telemetryConfig()->telemetry_inverted ? SERIAL_INVERTED : SERIAL_NOT_INVERTED);
+    mavlinkPort = openSerialPort(
+        portConfig->identifier, 
+        FUNCTION_TELEMETRY_MAVLINK, 
+        NULL, NULL, 
+        baudRates[baudRateIndex], 
+        TELEMETRY_MAVLINK_INITIAL_PORT_MODE,
+        telemetryConfig()->telemetry_inverted ? SERIAL_INVERTED : SERIAL_NOT_INVERTED);
 
     if (!mavlinkPort) {
         return;
@@ -389,6 +394,7 @@ static void mavlinkSendAttitude(void)
     transmitCounter = (transmitCounter + 1) % 100;
 }
 static void mavlinkSendHeartbeat(void){
+ 
     uint16_t msgLength;
  
     uint8_t mavModes = MAV_MODE_MANUAL_DISARMED;
@@ -778,7 +784,8 @@ void handleMAVLinkTelemetry(void)
 
     if (shouldSendTelemetry) {
         processMAVLinkTelemetry();
-        DEBUG_SET(DEBUG_MAVLINK, 2, 5);
+        DEBUG_SET(DEBUG_MAVLINK, 2, 3);
+        processMavlink();
         lastMavlinkMessageTime = now;
     }
    

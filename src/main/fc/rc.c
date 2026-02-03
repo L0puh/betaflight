@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
-#include "fc/control_mode.h"
+
 #include "platform.h"
 
 #include "build/debug.h"
@@ -700,10 +700,10 @@ FAST_CODE void processRcCommand(void)
 FAST_CODE_NOINLINE void updateRcCommands(void)
 {
     isRxDataNew = true;
-    if (isMode(CONTROL_MODE_MAVLINK)){
-        updateRcCommandsFromMavlink();
-        return;
-    }
+    // if (isMode(CONTROL_MODE_MAVLINK)){
+    //     updateRcCommandsFromMavlink();
+    //     return;
+    // }
 
 
     for (int axis = 0; axis < 3; axis++) {

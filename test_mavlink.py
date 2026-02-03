@@ -13,9 +13,9 @@ def main():
     
     try:
         conn = mavutil.mavlink_connection(DEVICE, baud=BAUD)
-        # print("Waiting for heartbeat...")
-        # conn.wait_heartbeat(timeout=10)
-        # print(f"Heartbeat received from system {conn.target_system}")
+        print("Waiting for heartbeat...")
+        conn.wait_heartbeat(timeout=10)
+        print(f"Heartbeat received from system {conn.target_system}")
         time_boot_ms = int(time.time())
         
         print("\n--- Sending SET_ATTITUDE_TARGET ---")

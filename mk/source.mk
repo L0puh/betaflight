@@ -151,6 +151,7 @@ COMMON_SRC = \
             drivers/serial_softserial.c \
             fc/core.c \
             fc/gps_lap_timer.c \
+            fc/custom_mode.c\
             fc/rc.c \
             fc/rc_adjustments.c \
             fc/rc_controls.c \

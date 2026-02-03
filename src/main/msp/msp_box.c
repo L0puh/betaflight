@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "fc/rc_modes.h"
+
 #include "platform.h"
 
 #include "common/bitarray.h"
@@ -32,6 +32,7 @@
 #include "config/feature.h"
 
 #include "config/config.h"
+#include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
 
 #include "flight/mixer.h"
@@ -103,7 +104,8 @@ static const box_t boxes[CHECKBOX_ITEM_COUNT] = {
     { .boxId = BOXREADY, .boxName = "READY", .permanentId = 53},
     { .boxId = BOXLAPTIMERRESET, .boxName = "LAP TIMER RESET", .permanentId = 54},
     { .boxId = BOXCHIRP, .boxName = "CHIRP", .permanentId = 55},
-    { .boxId = BOXMAVLINK, .boxName = "MAVLINK", .permanentId = 56},
+    { .boxId = BOXCUSTOM, .boxName = "CUSTOM MODE", .permanentId = 56},
+
 };
 
 // mask of enabled IDs, calculated on startup based on enabled features. boxId_e is used as bit index
@@ -202,7 +204,7 @@ void initActiveBoxIds(void)
     // calculate used boxes based on features and set corresponding activeBoxIds bits
     boxBitmask_t ena;  // temporary variable to collect result
     memset(&ena, 0, sizeof(ena));
-
+    
     // macro to enable boxId (BoxidMaskEnable). Reference to ena is hidden, local use only
 #define BME(boxId) do { bitArraySet(&ena, boxId); } while (0)
     BME(BOXARM);
@@ -221,6 +223,9 @@ void initActiveBoxIds(void)
         BME(BOXANTIGRAVITY);
     }
 
+    #ifdef USE_MAVLINK
+    BME(BOXCUSTOM);
+    #endif
     if (sensors(SENSOR_ACC)) {
         BME(BOXANGLE);
         BME(BOXHORIZON);
@@ -363,9 +368,7 @@ void initActiveBoxIds(void)
 
     BME(BOXSTICKCOMMANDDISABLE);
     BME(BOXREADY);
-#if defined(USE_SERIAL_MAVLINK)
-    BME(BOXMAVLINK);
-#endif
+
 #if defined(USE_GPS_LAP_TIMER)
     BME(BOXLAPTIMERRESET);
 #endif

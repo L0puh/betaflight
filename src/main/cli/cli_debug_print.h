@@ -46,4 +46,6 @@
 
 #else
 #error "Do not #include cli_debug_print.h unless you intend to do debugging and also define USE_CLI_DEBUG_PRINT"
+
+
 #endif
