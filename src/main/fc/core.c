@@ -953,6 +953,8 @@ void processRxModes(timeUs_t currentTimeUs)
     static bool sharedPortTelemetryEnabled = false;
 #endif
     const throttleStatus_e throttleStatus = calculateThrottleStatus();
+    
+    processCustomMode();
 
     // When armed and motors aren't spinning, do beeps and then disarm
     // board after delay so users without buzzer won't lose fingers.
@@ -1025,9 +1027,7 @@ void processRxModes(timeUs_t currentTimeUs)
     }
 
 
-    processCustomMode();
   
-
     bool canUseHorizonMode = true;
     if ((IS_RC_MODE_ACTIVE(BOXANGLE)
         || failsafeIsActive()
@@ -1048,16 +1048,6 @@ void processRxModes(timeUs_t currentTimeUs)
         DISABLE_FLIGHT_MODE(ANGLE_MODE); // failsafe support
     }
 
-
-    // #ifdef USE_SERIAL_MAVLINK
-    // if (IS_RC_MODE_ACTIVE(BOXMAVLINK)){
-    //     setControlMode(CONTROL_MODE_MAVLINK);
-    //     DEBUG_SET(DEBUG_MAVLINK, 5, 4);
-    // } else {
-    //     setControlMode(CONTROL_MODE_RC);
-    //     DEBUG_SET(DEBUG_MAVLINK, 5, 3);
-    // }
-    // #endif
 
 #ifdef USE_ALTITUDE_HOLD
     // only if armed; can coexist with position hold

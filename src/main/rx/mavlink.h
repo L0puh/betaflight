@@ -32,7 +32,7 @@ bool mavlinkRxInit(const rxConfig_t *initialRxConfig, rxRuntimeState_t *rxRuntim
 void mavlinkProcess(void);
 void taskProcessMavlink(timeUs_t currentTimeUs);
 void updateRcCommandsFromMavlink(void);
-void processMavlink(void);
+void mavlinkCustomRxInit(void);
 
 
 #if defined(USE_SERIAL_MAVLINK) || defined (USE_MAVLINK)

@@ -785,7 +785,7 @@ void handleMAVLinkTelemetry(void)
     if (shouldSendTelemetry) {
         processMAVLinkTelemetry();
         DEBUG_SET(DEBUG_MAVLINK, 2, 3);
-        processMavlink();
+;
         lastMavlinkMessageTime = now;
     }
    

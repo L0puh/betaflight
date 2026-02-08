@@ -204,6 +204,9 @@ STATIC_UNIT_TESTED bool isPulseValid(uint16_t pulseDuration)
 static bool serialRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
 {
     bool enabled = false;
+    #ifdef USE_MAVLINK
+    mavlinkCustomRxInit();
+    #endif
     switch (rxRuntimeState->serialrxProvider) {
 #ifdef USE_SERIALRX_SRXL2
     case SERIALRX_SRXL2:
@@ -273,6 +276,7 @@ static bool serialRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntime
         enabled = mavlinkRxInit(rxConfig, rxRuntimeState);
         break;
 #endif
+
     default:
         enabled = false;
         break;
@@ -403,7 +407,7 @@ void rxInit(void)
 }
 
 bool isRxReceivingSignal(void)
-{
+{   
     return rxSignalReceived;
 }
 

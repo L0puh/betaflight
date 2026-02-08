@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include "fc/custom_mode.h"
 #include "platform.h"
 
 #include "build/debug.h"
@@ -173,6 +174,7 @@ typedef enum {
     RX_STATE_CHECK,
     RX_STATE_MODES,
     RX_STATE_UPDATE,
+    RX_STATE_SUSPENDED,
     RX_STATE_COUNT
 } rxState_e;
 
@@ -196,6 +198,8 @@ static void taskUpdateRxMain(timeUs_t currentTimeUs)
     if (rxState != RX_STATE_UPDATE) {
         schedulerIgnoreTaskExecRate();
     }
+    if (!is_rx() && is_mavlink())
+        rxState = RX_STATE_SUSPENDED;
 
     switch (rxState) {
     default:
@@ -206,7 +210,11 @@ static void taskUpdateRxMain(timeUs_t currentTimeUs)
         }
         rxState = RX_STATE_MODES;
         break;
-
+    case RX_STATE_SUSPENDED:
+        updateRcCommands();
+        updateArmingStatus();
+        processRxModes(currentTimeUs);
+        break;
     case RX_STATE_MODES:
         processRxModes(currentTimeUs);
         rxState = RX_STATE_UPDATE;
@@ -488,7 +496,7 @@ task_attribute_t task_attributes[TASK_COUNT] = {
     [TASK_GIMBAL] = DEFINE_TASK("GIMBAL", NULL, NULL, gimbalUpdate, TASK_PERIOD_HZ(100), TASK_PRIORITY_MEDIUM),
 #endif
 #ifdef USE_MAVLINK
-    [TASK_MAVLINK] = DEFINE_TASK("MAVLINK", NULL, NULL, taskProcessMavlink, TASK_PERIOD_HZ(100), TASK_PRIORITY_MEDIUM),
+    [TASK_MAVLINK] = DEFINE_TASK("MAVLINK BRIDGE", NULL, NULL, taskProcessMavlink, TASK_PERIOD_HZ(1000), TASK_PRIORITY_MEDIUM),
 #endif 
 };
 

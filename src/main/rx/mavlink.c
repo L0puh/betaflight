@@ -5,6 +5,7 @@
 #include <string.h>
 
 
+#include "fc/custom_mode.h"
 #include "platform.h"
 #include "stm32f7xx_hal_def.h"
 #if defined(USE_SERIAL_MAVLINK) || defined(USE_MAVLINK)
@@ -32,7 +33,6 @@
 #pragma GCC diagnostic pop
 
 
-
 #define MAVLINK_CHANNEL_COUNT 18
 #define MAVLINK_BAUD_RATE_INDEX BAUD_115200  
 
@@ -54,8 +54,6 @@ typedef struct {
 
 static mavlinkState_t mav;
 
-
-
 static uint16_t mavlinkChannelData[MAVLINK_CHANNEL_COUNT];
 static bool frameReceived;
 
@@ -68,6 +66,12 @@ static mavlink_status_t mavRecvStatus;
 static volatile uint8_t txbuff_free = 100;
 static volatile bool txbuff_valid = false;
 
+
+void processMavlinkBridge(void){
+    if (!is_mavlink() && !is_rx()) return;
+
+
+}
 
 void mavlinkRxHandleMessage(const mavlink_rc_channels_override_t *msg)
 {
@@ -142,9 +146,7 @@ static void handleIncoming_RADIO_STATUS(void)
     txbuff_free = msg.txbuf;
 }
 
-void processMavlink(void) {
-    
-}
+
 
 static void handleIncoming_SET_ATTITUDE_TARGET(void)
 {
@@ -194,7 +196,6 @@ void updateRcCommandsFromMavlink(void){
 }
 
 
-
 #ifdef USE_SERIAL_MAVLINK
 
 bool mavlinkRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
@@ -219,7 +220,7 @@ bool mavlinkRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
     }
 
     serialPort = openSerialPort(
-        portConfig->identifier,
+        portConfig->identifier, 
         FUNCTION_RX_SERIAL,
         mavlinkDataReceive,
         rxRuntimeState,
@@ -238,45 +239,23 @@ bool mavlinkRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
 }
 
 #endif 
+void mavlinkCustomRxInit(void){
+    serialPort = openSerialPort(
+        SERIAL_PORT_UART4, //FIXME! no hard coding
+        FUNCTION_NONE,
+        NULL, NULL,
+        57600,
+        MODE_RXTX,
+        SERIAL_NOT_INVERTED
+    );
+}
 
 void taskProcessMavlink(timeUs_t currentTimeUs)
 {
     UNUSED(currentTimeUs);
-
-    if (!serialPort) {
-        const serialPortConfig_t *portConfig =
-            findSerialPortConfig(FUNCTION_TELEMETRY_MAVLINK);
-
-        if (!portConfig) {
-            return;
-        }
-
-        serialPort = openSerialPort(
-            portConfig->identifier,
-            FUNCTION_TELEMETRY_MAVLINK,
-            NULL,
-            NULL,
-            baudRates[MAVLINK_BAUD_RATE_INDEX],
-            MODE_RXTX,
-            SERIAL_NOT_INVERTED
-        );
-
-        if (!serialPort) {
-            return;
-        }
-    }
-
-    while (serialRxBytesWaiting(serialPort) > 0) {
-        uint8_t c = serialRead(serialPort);
-        mavlink_parse_char(
-            MAVLINK_COMM_0,
-            c,
-            &mavRecvMsg,
-            &mavRecvStatus
-        );
-    }
+    if (!serialPort || !is_mavlink()) return;
+    DEBUG_SET(DEBUG_MAVLINK, 2, -7);
 }
-
 
 #ifdef USE_TELEMETRY_MAVLINK
 bool isValidMavlinkTxBuffer(void)
