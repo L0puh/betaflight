@@ -784,8 +784,8 @@ void handleMAVLinkTelemetry(void)
 
     if (shouldSendTelemetry) {
         processMAVLinkTelemetry();
-        DEBUG_SET(DEBUG_MAVLINK, 2, 3);
-;
+        DEBUG_SET(DEBUG_MAVLINK, 4, 3);
+
         lastMavlinkMessageTime = now;
     }
    
@@ -793,7 +793,7 @@ void handleMAVLinkTelemetry(void)
     if (cmpTimeUs(micros(), lastHb) >= 1000000) {
         lastHb = micros();
         mavlinkSendHeartbeat();
-        DEBUG_SET(DEBUG_MAVLINK, 2, 5);
+        DEBUG_SET(DEBUG_MAVLINK, 3, 5);
     }
 }
 

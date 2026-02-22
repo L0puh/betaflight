@@ -6,6 +6,9 @@
 
 
 #include "fc/custom_mode.h"
+#include "fc/runtime_config.h"
+#include "flight/failsafe.h"
+#include "flight/mixer.h"
 #include "platform.h"
 #include "stm32f7xx_hal_def.h"
 #if defined(USE_SERIAL_MAVLINK) || defined(USE_MAVLINK)
@@ -66,12 +69,10 @@ static mavlink_status_t mavRecvStatus;
 static volatile uint8_t txbuff_free = 100;
 static volatile bool txbuff_valid = false;
 
-
-void processMavlinkBridge(void){
-    if (!is_mavlink() && !is_rx()) return;
-
-
-}
+#define MAVLINK_SYSTEM_ID 1
+#define MAVLINK_COMPONENT_ID MAV_COMP_ID_AUTOPILOT1
+static mavlink_message_t mavMsg;
+static uint8_t mavBuffer[MAVLINK_MAX_PACKET_LEN];
 
 void mavlinkRxHandleMessage(const mavlink_rc_channels_override_t *msg)
 {
@@ -239,12 +240,108 @@ bool mavlinkRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
 }
 
 #endif 
+
+static void mavlinkSerialWrite(uint8_t * buf, uint16_t length)
+{
+    for (int i = 0; i < length; i++)
+        serialWrite(serialPort, buf[i]);
+}
+
+
+static void mavlinkSendHeartbeat(void){
+ 
+    uint16_t msgLength;
+ 
+    uint8_t mavModes = MAV_MODE_MANUAL_DISARMED;
+    if (ARMING_FLAG(ARMED))
+        mavModes |= MAV_MODE_MANUAL_ARMED;
+
+    uint8_t mavSystemType;
+    switch (mixerConfig()->mixerMode)
+    {
+        case MIXER_TRI:
+            mavSystemType = MAV_TYPE_TRICOPTER;
+            break;
+        case MIXER_QUADP:
+        case MIXER_QUADX:
+        case MIXER_Y4:
+        case MIXER_VTAIL4:
+            mavSystemType = MAV_TYPE_QUADROTOR;
+            break;
+        case MIXER_Y6:
+        case MIXER_HEX6:
+        case MIXER_HEX6X:
+            mavSystemType = MAV_TYPE_HEXAROTOR;
+            break;
+        case MIXER_OCTOX8:
+        case MIXER_OCTOX8P:
+        case MIXER_OCTOFLATP:
+        case MIXER_OCTOFLATX:
+            mavSystemType = MAV_TYPE_OCTOROTOR;
+            break;
+        case MIXER_FLYING_WING:
+        case MIXER_AIRPLANE:
+        case MIXER_CUSTOM_AIRPLANE:
+            mavSystemType = MAV_TYPE_FIXED_WING;
+            break;
+        case MIXER_HELI_120_CCPM:
+        case MIXER_HELI_90_DEG:
+            mavSystemType = MAV_TYPE_HELICOPTER;
+            break;
+        default:
+            mavSystemType = MAV_TYPE_GENERIC;
+            break;
+    }
+
+    // Custom mode for compatibility with APM OSDs
+    uint8_t mavCustomMode = 1;  // Acro by default
+
+    if (FLIGHT_MODE(ANGLE_MODE | HORIZON_MODE | ALT_HOLD_MODE | POS_HOLD_MODE)) {
+        mavCustomMode = 0;      //Stabilize
+        mavModes |= MAV_MODE_FLAG_STABILIZE_ENABLED;
+    }
+
+    uint8_t mavSystemState = 0;
+    if (ARMING_FLAG(ARMED)) {
+        if (failsafeIsActive()) {
+            mavSystemState = MAV_STATE_CRITICAL;
+        }
+        else {
+            mavSystemState = MAV_STATE_ACTIVE;
+        }
+    }
+    else {
+        mavSystemState = MAV_STATE_STANDBY;
+    }
+
+    mavlink_msg_heartbeat_pack(MAVLINK_SYSTEM_ID, MAVLINK_COMPONENT_ID, &mavMsg,
+        // type Type of the MAV (quadrotor, helicopter, etc., up to 15 types, defined in MAV_TYPE ENUM)
+        mavSystemType,
+        // autopilot Autopilot type / class. defined in MAV_AUTOPILOT ENUM
+        MAV_AUTOPILOT_GENERIC,
+        // base_mode System mode bitfield, see MAV_MODE_FLAGS ENUM in mavlink/include/mavlink_types.h
+        mavModes,
+        // custom_mode A bitfield for use for autopilot-specific flags.
+        mavCustomMode,
+        // system_status System status flag, see MAV_STATE ENUM
+        mavSystemState);
+    msgLength = mavlink_msg_to_send_buffer(mavBuffer, &mavMsg);
+    mavlinkSerialWrite(mavBuffer, msgLength);
+
+    // Packets transmit counter to debug actual data rate
+    static uint32_t transmitCounter = 0;
+    DEBUG_SET(DEBUG_MAVLINK_TELEMETRY, 6, transmitCounter);
+    transmitCounter = (transmitCounter + 1) % 100;
+}
+
+
 void mavlinkCustomRxInit(void){
     serialPort = openSerialPort(
-        SERIAL_PORT_UART4, //FIXME! no hard coding
-        FUNCTION_NONE,
-        NULL, NULL,
-        57600,
+        SERIAL_PORT_UART4,
+        FUNCTION_RX_SERIAL,
+        mavlinkDataReceive,
+        &rxRuntimeState,
+        baudRates[MAVLINK_BAUD_RATE_INDEX],
         MODE_RXTX,
         SERIAL_NOT_INVERTED
     );
@@ -254,7 +351,16 @@ void taskProcessMavlink(timeUs_t currentTimeUs)
 {
     UNUSED(currentTimeUs);
     if (!serialPort || !is_mavlink()) return;
-    DEBUG_SET(DEBUG_MAVLINK, 2, -7);
+  
+
+    DEBUG_SET(DEBUG_MAVLINK, 0, -7);
+    
+    rxRuntimeState.channelData = mavlinkChannelData;
+    rxRuntimeState.channelCount = MAVLINK_CHANNEL_COUNT;
+    rxRuntimeState.rcReadRawFn = mavlinkReadRawRC;
+    rxRuntimeState.rcFrameStatusFn = mavlinkFrameStatus;
+
+    mavlinkSendHeartbeat();
 }
 
 #ifdef USE_TELEMETRY_MAVLINK

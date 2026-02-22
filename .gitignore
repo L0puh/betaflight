@@ -1,5 +1,6 @@
 *.o
 .cache
+*.json
 .venv
 .DS_Store
 *~

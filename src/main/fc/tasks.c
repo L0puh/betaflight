@@ -198,12 +198,14 @@ static void taskUpdateRxMain(timeUs_t currentTimeUs)
     if (rxState != RX_STATE_UPDATE) {
         schedulerIgnoreTaskExecRate();
     }
-    if (!is_rx() && is_mavlink())
-        rxState = RX_STATE_SUSPENDED;
 
     switch (rxState) {
     default:
     case RX_STATE_CHECK:
+        if (!is_rx() && is_mavlink()){
+            rxState = RX_STATE_SUSPENDED; 
+            DEBUG_SET(DEBUG_MAVLINK, 2, 6);
+        }
         if (!processRx(currentTimeUs)) {
             rxState = RX_STATE_CHECK;
             break;
@@ -211,10 +213,6 @@ static void taskUpdateRxMain(timeUs_t currentTimeUs)
         rxState = RX_STATE_MODES;
         break;
     case RX_STATE_SUSPENDED:
-        updateRcCommands();
-        updateArmingStatus();
-        processRxModes(currentTimeUs);
-        break;
     case RX_STATE_MODES:
         processRxModes(currentTimeUs);
         rxState = RX_STATE_UPDATE;

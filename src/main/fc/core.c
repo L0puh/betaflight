@@ -25,6 +25,7 @@
 #include <math.h>
 
 
+#include "fc/rc_modes.h"
 #include "platform.h"
 
 #include "blackbox/blackbox.h"
@@ -822,7 +823,7 @@ bool processRx(timeUs_t currentTimeUs)
     if (currentTimeUs > FAILSAFE_POWER_ON_DELAY_US && !failsafeIsMonitoring()) {
         failsafeStartMonitoring();
     }
-
+ 
     const bool throttleActive = calculateThrottleStatus() != THROTTLE_LOW;
     const uint8_t throttlePercent = calculateThrottlePercentAbs();
     const bool launchControlActive = isLaunchControlActive();
@@ -947,14 +948,11 @@ bool processRx(timeUs_t currentTimeUs)
 void processRxModes(timeUs_t currentTimeUs)
 {
 
-    
     static bool armedBeeperOn = false;
 #ifdef USE_TELEMETRY
     static bool sharedPortTelemetryEnabled = false;
 #endif
     const throttleStatus_e throttleStatus = calculateThrottleStatus();
-    
-    processCustomMode();
 
     // When armed and motors aren't spinning, do beeps and then disarm
     // board after delay so users without buzzer won't lose fingers.
@@ -1007,7 +1005,6 @@ void processRxModes(timeUs_t currentTimeUs)
 #endif
         ) {
         processRcStickPositions();
-       
     } 
 
     if (featureIsEnabled(FEATURE_INFLIGHT_ACC_CAL)) {
@@ -1015,6 +1012,7 @@ void processRxModes(timeUs_t currentTimeUs)
     }
 
     updateActivatedModes();
+    processCustomMode(); // when it's on, deligates all proccessing to automatic
 
 #ifdef USE_DSHOT
     if (crashFlipModeActive) {
@@ -1025,8 +1023,6 @@ void processRxModes(timeUs_t currentTimeUs)
     if (!cliMode && !(IS_RC_MODE_ACTIVE(BOXPARALYZE) && !ARMING_FLAG(ARMED))) {
         processRcAdjustments(currentControlRateProfile);
     }
-
-
   
     bool canUseHorizonMode = true;
     if ((IS_RC_MODE_ACTIVE(BOXANGLE)
