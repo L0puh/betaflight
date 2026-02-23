@@ -493,7 +493,8 @@ task_attribute_t task_attributes[TASK_COUNT] = {
     [TASK_GIMBAL] = DEFINE_TASK("GIMBAL", NULL, NULL, gimbalUpdate, TASK_PERIOD_HZ(100), TASK_PRIORITY_MEDIUM),
 #endif
 #ifdef USE_MAVLINK
-    [TASK_MAVLINK] = DEFINE_TASK("MAVLINK BRIDGE", NULL, NULL, taskProcessMavlink, TASK_PERIOD_HZ(1000), TASK_PRIORITY_MEDIUM),
+    [TASK_MAVLINK]            = DEFINE_TASK("MAVLINK BRIDGE",     NULL, NULL, taskProcessMavlink,        TASK_PERIOD_HZ(1000), TASK_PRIORITY_MEDIUM),
+    [TASK_MAVLINK_HEARTBEATS] = DEFINE_TASK("MAVLINK HEARTBEATS", NULL, NULL, taskMavlinkSendHeartbeats, TASK_PERIOD_HZ(1), TASK_PRIORITY_LOW),
 #endif 
 };
 
@@ -691,5 +692,6 @@ void tasksInit(void)
 #endif
 #ifdef USE_MAVLINK
     setTaskEnabled(TASK_MAVLINK,true);
+    setTaskEnabled(TASK_MAVLINK_HEARTBEATS, true);
 #endif
 }

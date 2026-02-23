@@ -193,6 +193,7 @@ typedef enum {
 #endif
 #ifdef USE_MAVLINK
     TASK_MAVLINK,
+    TASK_MAVLINK_HEARTBEATS,
 #endif
 
     /* Count of real tasks */

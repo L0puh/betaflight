@@ -26,6 +26,7 @@
 #include <math.h>
 #include <ctype.h>
 
+
 #include "platform.h"
 
 // FIXME remove this for targets that don't need a CLI.  Perhaps use a no-op macro when USE_CLI is not enabled
@@ -33,6 +34,11 @@
 bool cliMode = false;
 
 #ifdef USE_CLI
+#ifdef USE_MAVLINK
+#include "fc/custom_mode.h"
+#include "rx/mavlink.h"
+#endif 
+
 
 #include "blackbox/blackbox.h"
 
@@ -2933,13 +2939,7 @@ static void printVtxTable(dumpFlags_t dumpMask, const vtxTableConfig_t *currentC
 }
 
 
-static void cliMavlinkDebug(const char *cmdName, char *cmdline){
-    UNUSED(cmdName);
-    UNUSED(cmdline);
-    cliPrintLinef("Welcome to DEBUGING MAVLINK");
-    cliPrintLinef("CUSTOM MODE PROCESS RC MODE IS %s\n", IS_RC_MODE_ACTIVE(BOXCUSTOM) ? "ACTIVE": "NOT ACTIVE");
-    cliPrintLinef("CUSTOM MODE PROCESS FLIGHT MODE IS %s\n", FLIGHT_MODE(CUSTOM_MODE) ? "ACTIVE": "NOT ACTIVE");
-}
+
 static void cliVtxTable(const char *cmdName, char *cmdline)
 {
     char *tok;
@@ -3197,6 +3197,18 @@ static void printCraftName(dumpFlags_t dumpMask, const pilotConfig_t *pilotConfi
 
 #if defined(USE_BOARD_INFO)
 
+#ifdef USE_MAVLINK
+static void cliMavlinkDebug(const char *cmdName, char *cmdline){
+    UNUSED(cmdName);
+    UNUSED(cmdline);
+    cliPrintLinef("Welcome to DEBUGING MAVLINK");
+    cliPrintLinef("BOXCUSTOM RC MODE IS %s\n", IS_RC_MODE_ACTIVE(BOXCUSTOM) ? "ACTIVE": "NOT ACTIVE");
+    cliPrintLinef("CUSTOM FLIGHT MODE IS %s\n", FLIGHT_MODE(CUSTOM_MODE) ? "ACTIVE": "NOT ACTIVE");
+    cliPrintLinef("LAST SENT HEARTBEAT: %lu ms\n", mavlinkGetLastHeartbeatMs());
+    cliPrintLinef("LAST SENT ACK: %lu\n", mavlinkGetLastSentAckId());
+}
+#endif 
+
 static void printBoardName(dumpFlags_t dumpMask)
 {
     if (!(dumpMask & DO_DIFF) || strlen(getBoardName())) {
@@ -3304,6 +3316,8 @@ static void cliSignature(const char *cmdName, char *cmdline)
 #undef ERROR_MESSAGE
 
 #endif // USE_BOARD_INFO
+
+
 
 static void cliMcuId(const char *cmdName, char *cmdline)
 {

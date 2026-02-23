@@ -32,8 +32,11 @@ bool mavlinkRxInit(const rxConfig_t *initialRxConfig, rxRuntimeState_t *rxRuntim
 bool mavlinkRxClose(rxRuntimeState_t *rxRuntimeState);
 void mavlinkProcess(void);
 void taskProcessMavlink(timeUs_t currentTimeUs);
+void taskMavlinkSendHeartbeats(timeUs_t currentTimeUs);
 void updateRcCommandsFromMavlink(void);
 void mavlinkCustomRxInit(void);
+timeMs_t mavlinkGetLastHeartbeatMs(void);
+uint32_t mavlinkGetLastSentAckId(void);
 
 
 #if defined(USE_SERIAL_MAVLINK) || defined (USE_MAVLINK)

@@ -73,6 +73,7 @@ static volatile bool txbuff_valid = false;
 #define MAVLINK_SYSTEM_ID 1
 #define MAVLINK_COMPONENT_ID MAV_COMP_ID_AUTOPILOT1
 static mavlink_message_t mavMsg;
+static uint32_t last_sent_ack = -1;
 static uint8_t mavBuffer[MAVLINK_MAX_PACKET_LEN];
 
 void mavlinkRxHandleMessage(const mavlink_rc_channels_override_t *msg)
@@ -122,6 +123,7 @@ static void send_mavlink_ack(uint8_t sysid, uint8_t compid)
         compid
     );
 
+    last_sent_ack = mavRecvMsg.msgid;
     uint8_t buf[MAVLINK_MAX_PACKET_LEN];
     uint16_t len = mavlink_msg_to_send_buffer(buf, &ack);
     serialWriteBuf(serialPort, buf, len);
@@ -192,6 +194,15 @@ STATIC_UNIT_TESTED void mavlinkDataReceive(uint16_t c, void *data)
             break;
         }
     }
+}
+
+
+timeMs_t mavlinkGetLastHeartbeatMs(void){
+    return mav.lastHeartbeatMs;
+}
+
+uint32_t mavlinkGetLastSentAckId(void){
+    return last_sent_ack;
 }
 
 bool mavlinkRxClose(rxRuntimeState_t *rxRuntimeState)
@@ -351,9 +362,15 @@ void mavlinkCustomRxInit(void){
     );
 }
 
+void taskMavlinkSendHeartbeats(timeUs_t currentTimeUs){
+    if (!serialPort || !is_mavlink()) return;
+    mav.lastHeartbeatMs = currentTimeUs;
+    mavlinkSendHeartbeat();
+}
+
+
 void taskProcessMavlink(timeUs_t currentTimeUs)
 {
-   
     UNUSED(currentTimeUs);
     if (!serialPort || !is_mavlink()) return;
     
