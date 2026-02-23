@@ -2,6 +2,7 @@
 #include "build/debug.h"
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
+#include "rx/mavlink.h"
 #include "rx/rx.h"
 
 static bool lastState = false;
@@ -35,13 +36,16 @@ void processCustomMode(void)
 
             RX_STATUS_RUNNING = false;
             MAVLINK_STATUS_RUNNING = true;
-            old_rxRuntimeState = rxRuntimeState;
+
+            //mavlinkRxInit(rxConfig(), &rxRuntimeState);
+            
         } else {
             DISABLE_FLIGHT_MODE(CUSTOM_MODE);
 
             RX_STATUS_RUNNING = true;
             MAVLINK_STATUS_RUNNING = false;
-            rxRuntimeState = old_rxRuntimeState;
+
+          //  mavlinkRxClose(&rxRuntimeState);
         }
     }
   
@@ -50,5 +54,4 @@ void processCustomMode(void)
     DEBUG_SET(DEBUG_MAVLINK, 6, RX_STATUS_RUNNING ? 1: 0);
     DEBUG_SET(DEBUG_MAVLINK, 7, FLIGHT_MODE(CUSTOM_MODE) ? 1 : 0);
 
-    force_sync(active);
 }

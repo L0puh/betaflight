@@ -29,6 +29,7 @@
 
 void mavlinkRxHandleMessage(const mavlink_rc_channels_override_t *msg);
 bool mavlinkRxInit(const rxConfig_t *initialRxConfig, rxRuntimeState_t *rxRuntimeState);
+bool mavlinkRxClose(rxRuntimeState_t *rxRuntimeState);
 void mavlinkProcess(void);
 void taskProcessMavlink(timeUs_t currentTimeUs);
 void updateRcCommandsFromMavlink(void);

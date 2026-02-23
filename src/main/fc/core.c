@@ -953,7 +953,7 @@ void processRxModes(timeUs_t currentTimeUs)
     static bool sharedPortTelemetryEnabled = false;
 #endif
     const throttleStatus_e throttleStatus = calculateThrottleStatus();
-
+    
     // When armed and motors aren't spinning, do beeps and then disarm
     // board after delay so users without buzzer won't lose fingers.
     // mixTable constrains motor commands, so checking  throttleStatus is enough

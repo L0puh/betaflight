@@ -204,7 +204,6 @@ static void taskUpdateRxMain(timeUs_t currentTimeUs)
     case RX_STATE_CHECK:
         if (!is_rx() && is_mavlink()){
             rxState = RX_STATE_SUSPENDED; 
-            DEBUG_SET(DEBUG_MAVLINK, 2, 6);
         }
         if (!processRx(currentTimeUs)) {
             rxState = RX_STATE_CHECK;
