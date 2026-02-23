@@ -224,8 +224,6 @@ bool mavlinkRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
         mavlinkChannelData[i] = rxConfig->midrc;
     }
 
-    old_rxRuntimeState = *rxRuntimeState; //save backup of initial port
-
     rxRuntimeState->channelData = mavlinkChannelData;
     rxRuntimeState->channelCount = MAVLINK_CHANNEL_COUNT;
     rxRuntimeState->rcReadRawFn = mavlinkReadRawRC;
@@ -354,7 +352,7 @@ void mavlinkCustomRxInit(void){
     serialPort = openSerialPort(
         SERIAL_PORT_UART4,
         FUNCTION_RX_SERIAL,
-        mavlinkDataReceive,
+        NULL,
         &rxRuntimeState,
         baudRates[MAVLINK_BAUD_RATE_INDEX],
         MODE_RXTX,
@@ -373,9 +371,9 @@ void taskProcessMavlink(timeUs_t currentTimeUs)
 {
     UNUSED(currentTimeUs);
     if (!serialPort || !is_mavlink()) return;
-    
-    mavlinkDataReceive(serialRead(serialPort), &rxRuntimeState);
-    DEBUG_SET(DEBUG_MAVLINK, 6, 1);
+    if (serialRxBytesWaiting(serialPort)){
+        mavlinkDataReceive(serialRead(serialPort), &rxRuntimeState);
+    }
 }
 
 #ifdef USE_TELEMETRY_MAVLINK

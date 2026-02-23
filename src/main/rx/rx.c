@@ -210,11 +210,7 @@ static bool serialRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntime
     mavlinkCustomRxInit();
 #endif 
     switch (rxRuntimeState->serialrxProvider) {
-#ifdef USE_SERIAL_MAVLINK
-    case SERIALRX_MAVLINK:
-        enabled = mavlinkRxInit(rxConfig, rxRuntimeState);
-        break;
-#endif
+
 #ifdef USE_SERIALRX_SRXL2
     case SERIALRX_SRXL2:
         enabled = srxl2RxInit(rxConfig, rxRuntimeState);
@@ -279,7 +275,11 @@ static bool serialRxInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntime
         break;
 #endif
 
-
+#ifdef USE_SERIAL_MAVLINK
+    case SERIALRX_MAVLINK:
+        enabled = mavlinkRxInit(rxConfig, rxRuntimeState);
+        break;
+#endif
     default:
         enabled = false;
         break;
