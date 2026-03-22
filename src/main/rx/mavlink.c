@@ -76,6 +76,17 @@ static mavlink_message_t mavMsg;
 static uint32_t last_sent_ack = -1;
 static uint8_t mavBuffer[MAVLINK_MAX_PACKET_LEN];
 
+mavlink_msg_cfg mavlink_msg_configs[] = {
+    {ATTITUDE, "ATTITUDE", 10},
+};
+bool mavlinkSetMsgFreq(mavlink_msg_type type, int freq) {
+    if (freq < 0) {
+        return 0;
+    }
+    mavlink_msg_configs[type].freq = freq;
+    return 1;
+}
+
 void mavlinkRxHandleMessage(const mavlink_rc_channels_override_t *msg)
 {
     const uint16_t *channelsPtr = (uint16_t*)&msg->chan1_raw;

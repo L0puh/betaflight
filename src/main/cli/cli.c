@@ -3198,15 +3198,76 @@ static void printCraftName(dumpFlags_t dumpMask, const pilotConfig_t *pilotConfi
 #if defined(USE_BOARD_INFO)
 
 #ifdef USE_MAVLINK
-static void cliMavlinkDebug(const char *cmdName, char *cmdline){
-    UNUSED(cmdName);
-    UNUSED(cmdline);
+
+static void dumpMavlinkMessageTypes(void)
+{
+    cliPrintLinef("Current settings for messages:");
+    for (int i = 0; i < MAV_ENUM_END; i++){
+        cliPrintLinef("%s: %d Hz\n", mavlink_msg_configs[i].name,
+                                            mavlink_msg_configs[i].freq);
+    }
+
+}
+static void infoMavlink(void)
+{
     cliPrintLinef("Welcome to DEBUGING MAVLINK");
+    cliRepeat('-', 20);
     cliPrintLinef("BOXCUSTOM RC MODE IS %s\n", IS_RC_MODE_ACTIVE(BOXCUSTOM) ? "ACTIVE": "NOT ACTIVE");
     cliPrintLinef("CUSTOM FLIGHT MODE IS %s\n", FLIGHT_MODE(CUSTOM_MODE) ? "ACTIVE": "NOT ACTIVE");
     cliPrintLinef("LAST SENT HEARTBEAT: %lu ms\n", mavlinkGetLastHeartbeatMs());
     cliPrintLinef("LAST SENT ACK: %lu\n", mavlinkGetLastSentAckId());
+    dumpMavlinkMessageTypes();
 }
+
+static void lastMessageMavlink(void)
+{
+    cliPrintLinef("NOT IMPLEMENTED YET");
+}
+
+
+static void cliMavlinkDebug(const char *cmdName, char *cmdline){
+    //set_freq <message_name> <value> | info | last_message
+    int len = strlen(cmdline);
+    if (len == 0){
+        cliPrintErrorLinef(cmdName, "provide arguments:\r\n\
+                set_freq <message_name>=<freq> to set the frequency of certain message\r\n\
+                info - to show general info\r\n\
+                last_message - to show info of last sent message\r\n");
+        return;
+    }
+
+    if (strncasecmp(cmdline, "info", len) == 0) {
+        infoMavlink();
+        return;
+    } else if (strncasecmp(cmdline, "last_message", len) == 0){
+        lastMessageMavlink();
+        return;
+    }
+    
+    char* pch = NULL;
+    char* saveptr;
+    pch = strtok_r(cmdline, " ", &saveptr);
+    if (!pch || strcasecmp(pch, "set_freq") != 0) {
+        cliPrintErrorLinef(cmdName, "Error parsing this command\n");
+        return;
+    }
+    pch = strtok_r(NULL, " ", &saveptr);
+
+    if (strcasecmp(pch, "attitude") == 0){ //FIXME 
+        pch = strtok_r(NULL, " ", &saveptr);
+        if (!pch) {
+            cliPrintErrorLinef(cmdName, "Error parsing this command\n");
+            return;
+        }
+        bool ret = mavlinkSetMsgFreq(ATTITUDE, pch ? atoi(pch): -1);
+        if (ret) {
+            cliPrintLinef("Freq set successfully!");
+            return;
+        }
+        cliPrintErrorLinef(cmdName, "Error setting this frequency\n");
+    }
+}
+
 #endif 
 
 static void printBoardName(dumpFlags_t dumpMask)
@@ -6739,7 +6800,8 @@ const clicmd_t cmdTable[] = {
     CLI_COMMAND_DEF("vtxtable", "vtx frequency table", "<band> <bandname> <bandletter> [FACTORY|CUSTOM] <freq> ... <freq>\r\n", cliVtxTable),
 #endif
 #ifdef USE_MAVLINK
-    CLI_COMMAND_DEF("debug_mavlink", "prints current values", NULL, cliMavlinkDebug),
+    CLI_COMMAND_DEF("mavlink", "debug custom model and set values", "set_freq <message_name> <value> | info | last_message", cliMavlinkDebug),
+    
 #endif 
 };
 

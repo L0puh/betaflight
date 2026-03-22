@@ -27,6 +27,22 @@
 #include "rx/rx.h"   
 #pragma GCC diagnostic pop
 
+typedef enum {
+    ATTITUDE = 0,
+    MAV_ENUM_END
+} mavlink_msg_type;
+
+typedef struct _mavlink_msg_cfg {
+    mavlink_msg_type type;
+    char* name;
+    int freq;
+} mavlink_msg_cfg;
+
+extern mavlink_msg_cfg mavlink_msg_configs[];
+
+#define NUM_CONFIGS sizeof(mavlink_msg_configs) / sizeof(mavlink_msg_configs[0])
+
+bool mavlinkSetMsgFreq(mavlink_msg_type type, int freq);
 void mavlinkRxHandleMessage(const mavlink_rc_channels_override_t *msg);
 bool mavlinkRxInit(const rxConfig_t *initialRxConfig, rxRuntimeState_t *rxRuntimeState);
 bool mavlinkRxClose(rxRuntimeState_t *rxRuntimeState);
