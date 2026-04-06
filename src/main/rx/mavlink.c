@@ -44,14 +44,8 @@
 #define MAV_COMP_ID  MAV_COMP_ID_AUTOPILOT1
 
 typedef struct {
-    float roll;
-    float pitch;
-    float yawRate;
-    float thrust;
-
     timeMs_t lastHeartbeatMs;
     timeMs_t lastSetpointMs;
-
     bool heartbeatSeen;
     bool setpointValid;
 } mavlinkState_t;
@@ -170,11 +164,13 @@ static void handleIncoming_SET_ATTITUDE_TARGET(void)
     mavlink_set_attitude_target_t msg;
     mavlink_msg_set_attitude_target_decode(&mavRecvMsg, &msg);
 
-    mav.thrust = constrainf(msg.thrust, 0.0f, 1.0f);
-    mav.yawRate = msg.body_yaw_rate;
     mav.lastSetpointMs = millis();
     mav.setpointValid = true;
 
+    // FIXME: show case for debugging, needs to be fixed
+    rcData[ROLL] = msg.body_roll_rate; // rad/s 
+    rcData[YAW]  = msg.body_yaw_rate; 
+    rcData[PITCH] = msg.body_pitch_rate;
 
     send_mavlink_ack(mavRecvMsg.sysid, mavRecvMsg.compid);
 }
